@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lecture 10 — Extension: When the memory disappears</title>
+  <meta name="author" content="liyibing">
+  <!-- Course week not specified; Lecture 10 is the known designation. -->
+  <meta name="lecture" content="lecture10">
+  <meta name="description" content="A stochastic limit of autocatalytic integral control, with a reproducible simulation.">
+  <style>
+  :root { --ink:#1a1a1a; --muted:#566; --accent:#1f4e79; --line:#d8dee4; --bg:#fff; --soft:#f6f8fa; }
+  @media (prefers-color-scheme: dark) {
+    :root { --ink:#e8e8e8; --muted:#9aa; --accent:#8ab4e8; --line:#3a4652; --bg:#15191d; --soft:#1e242a; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; line-height:1.6; }
+  .wrap { max-width:760px; margin:0 auto; padding:40px 22px 80px; }
+  h1 { font-size:1.6rem; line-height:1.25; margin:0 0 6px; color:var(--accent); }
+  .meta { color:var(--muted); font-size:.92rem; margin-bottom:26px; }
+  h2 { font-size:1.05rem; color:var(--accent); margin:34px 0 8px;
+    border-bottom:1px solid var(--line); padding-bottom:5px; }
+  .card { background:var(--soft); border:1px solid var(--line); border-radius:6px;
+    padding:14px 18px; margin:14px 0; }
+  .fig { width:100%; border:1px solid var(--line); border-radius:6px; margin:14px 0; }
+  figcaption { font-size:.85rem; color:var(--muted); margin-top:6px; }
+  a { color:var(--accent); }
+  .src { font-size:.9rem; }
+
+  /* Additional styles for this essay's equations and Python code. */
+  figure { margin:20px 0; }
+  .fig { display:block; background:#fff; }
+  .equation { padding:14px; margin:18px 0; text-align:center;
+    background:var(--soft); border-radius:6px; overflow-x:auto; }
+  .reactions { display:grid; grid-template-columns:1fr 1fr; gap:10px 24px; text-align:left; }
+  .reactions small { display:block; color:var(--muted); }
+  .note { font-size:.85rem; color:var(--muted); }
+  pre { padding:14px 18px; max-height:26rem; overflow:auto; background:var(--soft);
+    border:1px solid var(--line); border-radius:6px; font-size:.78rem; line-height:1.5; tab-size:4; }
+  code { font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace; }
+  .src li { margin-bottom:12px; }
+  @media (max-width:540px) { .reactions { grid-template-columns:1fr; } }
+  @media print { pre { max-height:none; white-space:pre-wrap; overflow-wrap:anywhere; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Lecture 10 — Extension: When the memory disappears</h1>
+    <p class="meta">Author: liyibing · Lecture 10 (2026-10-19) · CCBS 2026</p>
+
+    <p class="card">
+      <strong>One sentence:</strong> An autocatalytic controller can lose regulation when its last
+      memory molecule disappears; basal synthesis permits recovery but shifts the deterministic
+      set point.
+    </p>
+
+    <h2 id="claim">The point I am adding</h2>
+    <p>
+      Lecture 10 shows that an autocatalytic controller integrates error in the logarithm of its
+      molecular abundance, but warns that zero is absorbing.<sup><a href="#r1">1</a></sup> I extend
+      that boundary argument by simulating discrete molecules and asking what changes if we give the
+      controller a way to restart.
+    </p>
+
+    <h2 id="model">Work it</h2>
+    <p>
+      Let <var>Z</var> be the memory and <var>X</var> the regulated output. In my minimal model,
+      <var>Z</var> produces <var>X</var>, while <var>X</var> removes <var>Z</var>. The four
+      reactions and their stochastic event rates are:
+    </p>
+    <div class="equation reactions" aria-label="Four reactions and their propensities">
+      <div>
+        Z → 2Z <small>Memory replication: μZ</small>
+      </div>
+      <div>
+        X + Z → X <small>Memory removal: θXZ</small>
+      </div>
+      <div>
+        Z → Z + X <small>Output production: kZ</small>
+      </div>
+      <div>
+        X → ∅ <small>Output removal: γX</small>
+      </div>
+    </div>
+    <p>
+      The corresponding deterministic equations are <var>dZ/dt</var> = (μ − θX)Z and
+      <var>dX/dt</var> = kZ − γX. For positive <var>Z</var>,
+    </p>
+    <div class="equation">
+      d ln(Z/Z<sub>ref</sub>)/dt = μ − θX<br> X* = μ/θ,&nbsp;&nbsp; Z* = γμ/(kθ).
+    </div>
+    <p>
+      Here Z<sub>ref</sub> is a fixed positive reference. Below the target μ/θ, memory grows and
+      increases output production; above it, memory shrinks. At a positive steady state, the output
+      therefore returns to μ/θ even if γ changes. But when the last <var>Z</var> molecule is
+      removed, both its replication and output production stop. Zero memory cannot restart itself.
+    </p>
+
+    <p>
+      I compared the continuous equations with Gillespie simulations of the same four
+      reactions.<sup><a href="#r2">2</a></sup> At time 10, I halved output removal. The
+      deterministic model lowers memory from 10 to 5 and restores output to 20. In contrast,
+      <strong>190 of 200 stochastic runs lose all memory by time 40</strong>. Of these, 31 fail
+      before the change: extinction is already possible without that disturbance. The first four
+      seeds are shown without filtering.
+    </p>
+    <figure>
+      <a href="lecture10-autocatalytic-memory-figure.svg" target="_blank" rel="noopener" aria-label="Open Figure 1 at full size"><img class="fig" src="lecture10-autocatalytic-memory-figure.svg" alt="Four panels: A shows the feedback circuit; B shows continuous recovery to output 20; C shows stochastic output trajectories with crosses marking memory extinction; D shows cumulative extinction reaching 190 of 200 runs by time 40."></a>
+      <figcaption>
+        <strong>Figure 1. Continuous recovery does not guarantee molecular survival.</strong>
+        <strong>A,</strong> the feedback circuit; ln(Z/Z<sub>ref</sub>) integrates μ − θX while Z
+        &gt; 0. Arrows indicate production or removal influences, with event rates beside them.
+        <strong>B,</strong> ODE solutions for Z and X. <strong>C,</strong> stochastic output
+        trajectories for seeds 0–3; crosses mark Z reaching zero in seeds 0, 1 and 2. Grey is the
+        deterministic output, not a stochastic average. <strong>D,</strong> cumulative memory
+        extinction across seeds 0–199; the endpoint is 95%, with a 95% Wilson interval of
+        91.0–97.3%. This interval describes Monte Carlo sampling uncertainty for this model, not
+        biological variability.<br>Dashed lines mark γ changing from 1 to 0.5 at t = 10. Initial (Z,
+        X) = (10, 20); μ = 1, θ = 0.05, k = 2. Time is arbitrary; μ, k and γ have units
+        time<sup>−1</sup>, and θ has units molecule<sup>−1</sup> time<sup>−1</sup>, with fixed
+        volume absorbed into θ. All parameters are illustrative. Figure and statistics are
+        reproducible below. <a href="lecture10-autocatalytic-memory-figure.pdf">Download PDF</a>.
+      </figcaption>
+    </figure>
+    <p class="note">
+      <strong>The code behind Figure 1.</strong> Reproduce with Python, NumPy, SciPy and Matplotlib.
+      <a href="lecture10_autocatalytic_memory.py" download>Download Python source</a> ·
+      <a href="lecture10-autocatalytic-memory-figure.json">All extinction times and parameters</a>.
+      Click the figure to enlarge it; scroll within the code to read the full script; the optional
+      audit flag is only for layout checks.
+    </p>
+    <pre tabindex="0" aria-label="Reproducible Python code"><code class="language-python">&quot;&quot;&quot;Figure 1: a count-based teaching model, not a fit to biological data.
+
+One chain of logic, read panel by panel:
+  A  The circuit. Memory Z copies itself while output X is below 20 and is
+     removed by X above it, so ln(Z/Zref) integrates 0.05*(20 - X). Every Z
+     reaction has rate proportional to Z, so Z = 0 can never be left.
+  B  At t = 10 output removal halves (gamma 1 -&gt; 0.5). The ODE re-sets Z
+     from 10 to 5 and X returns to 20 (perfect adaptation).
+  C  Counted molecule by molecule, Z can hit 0. Once it does, X just decays.
+  D  How often that happens, across all 200 seeds.
+
+Every number printed on the figure is computed below and saved in the .json;
+the caption file maps each claim to the JSON key that backs it.
+
+Run: python lecture10_autocatalytic_memory.py
+Requires numpy, scipy and matplotlib. Outputs are saved beside this script.
+&quot;&quot;&quot;
+from pathlib import Path
+import json
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.patches import FancyBboxPatch
+from matplotlib.ticker import MaxNLocator
+from scipy.integrate import solve_ivp
+
+MU, THETA, K = 1.0, 0.05, 2.0
+GAMMA_BEFORE, GAMMA_AFTER = 1.0, 0.5
+SWITCH, END = 10.0, 40.0
+INITIAL = [10, 20]  # Z, X: molecule counts in one fixed compartment
+SEEDS = range(200)
+SHOWN = 4           # first four seeds are drawn, unfiltered
+TARGET = MU/THETA   # X at which Z neither grows nor shrinks
+# Time is in arbitrary units (a.u.). MU, K, gamma: a.u.^-1;
+# THETA: molecule^-1 a.u.^-1 (the fixed volume is absorbed here).
+COLORS = [&quot;#0072B2&quot;, &quot;#D55E00&quot;, &quot;#009E73&quot;, &quot;#CC79A7&quot;]
+INK, GREY = &quot;#182028&quot;, &quot;#8b949e&quot;
+
+
+def simulate(seed):
+    &quot;&quot;&quot;Gillespie direct method; restart the event clock at the rate step.&quot;&quot;&quot;
+    rng = np.random.default_rng(seed)
+    t, z, x = 0.0, *INITIAL
+    times, states, extinction = [t], [[z, x]], None
+    changes = np.array([[1, 0], [-1, 0], [0, 1], [0, -1]])
+    while t &lt; END:
+        gamma = GAMMA_BEFORE if t &lt; SWITCH else GAMMA_AFTER
+        rates = np.array([MU*z, THETA*x*z, K*z, gamma*x])
+        total = rates.sum()
+        if total == 0:
+            break
+        event_time = t + rng.exponential(1/total)
+        if t &lt; SWITCH &lt;= event_time:
+            t = SWITCH
+            times.append(t)
+            states.append([z, x])
+            continue
+        if event_time &gt; END:
+            break
+        t = event_time
+        reaction = np.searchsorted(np.cumsum(rates), rng.random()*total)
+        z, x = np.array([z, x]) + changes[reaction]
+        assert z &gt;= 0 and x &gt;= 0
+        if z == 0 and extinction is None:
+            extinction = t
+        times.append(t)
+        states.append([z, x])
+    times.append(END)
+    states.append([z, x])
+    return np.array(times), np.array(states), extinction
+
+
+def deterministic():
+    def rhs(gamma):
+        return lambda t, y: [(MU-THETA*y[1])*y[0], K*y[0]-gamma*y[1]]
+    a = solve_ivp(rhs(GAMMA_BEFORE), [0, SWITCH], INITIAL,
+                  t_eval=np.linspace(0, SWITCH, 201), rtol=1e-9, atol=1e-11)
+    b = solve_ivp(rhs(GAMMA_AFTER), [SWITCH, END], a.y[:, -1],
+                  t_eval=np.linspace(SWITCH, END, 601), rtol=1e-9, atol=1e-11)
+    assert a.success and b.success
+    return np.r_[a.t, b.t[1:]], np.c_[a.y, b.y[:, 1:]]
+
+
+def wilson(k, n, z=1.96):
+    &quot;&quot;&quot;95% Wilson score interval for a binomial proportion k/n.&quot;&quot;&quot;
+    p = k/n
+    centre = (p + z*z/(2*n)) / (1 + z*z/n)
+    half = z*np.sqrt(p*(1-p)/n + z*z/(4*n*n)) / (1 + z*z/n)
+    return centre-half, centre+half
+
+
+def draw_circuit(ax):
+    &quot;&quot;&quot;Panel A: the four reactions as a picture, rate laws beside the arrows.&quot;&quot;&quot;
+    ax.set(xlim=(0, 10), ylim=(0, 6.4))
+    ax.axis(&quot;off&quot;)
+    for x0, name, sub in [(1.0, &quot;Z&quot;, &quot;memory&quot;), (6.6, &quot;X&quot;, &quot;output&quot;)]:
+        ax.add_patch(FancyBboxPatch((x0, 2.4), 2.4, 1.6, boxstyle=&quot;round,pad=0.1&quot;,
+                                    fc=&quot;#eef3f8&quot;, ec=INK, lw=1.4))
+        ax.text(x0+1.2, 3.35, name, ha=&quot;center&quot;, va=&quot;center&quot;, fontsize=20,
+                fontweight=&quot;bold&quot;, color=INK)
+        ax.text(x0+1.2, 2.75, sub, ha=&quot;center&quot;, va=&quot;center&quot;, fontsize=9, color=&quot;#4a5560&quot;)
+    arrow = dict(arrowstyle=&quot;-|&gt;&quot;, lw=1.6, color=INK, mutation_scale=14)
+    block = dict(arrowstyle=&quot;-[&quot;, lw=1.6, color=&quot;#C0392B&quot;, mutation_scale=8)
+    ax.annotate(&quot;&quot;, (6.5, 3.6), (3.5, 3.6), arrowprops=arrow)
+    ax.text(5.0, 3.85, &quot;Z makes X:  k·Z&quot;, ha=&quot;center&quot;, fontsize=9.5)
+    ax.annotate(&quot;&quot;, (3.5, 2.8), (6.5, 2.8), arrowprops=block)
+    ax.text(5.0, 2.25, &quot;X removes Z:  θ·X·Z&quot;, ha=&quot;center&quot;, fontsize=9.5, color=&quot;#C0392B&quot;)
+    ax.annotate(&quot;&quot;, (1.6, 4.15), (2.8, 4.15),
+                arrowprops=dict(arrow, connectionstyle=&quot;arc3,rad=1.6&quot;))
+    ax.text(2.2, 5.45, &quot;Z copies itself:  μ·Z&quot;, ha=&quot;center&quot;, fontsize=9.5)
+    ax.annotate(&quot;&quot;, (7.8, 1.3), (7.8, 2.3), arrowprops=arrow)
+    ax.text(7.8, 0.95, &quot;X removed:  γ·X&quot;, ha=&quot;center&quot;,
+            va=&quot;center&quot;, fontsize=9.5)
+    ax.text(0.1, 0.05, f&quot;dZ/dt = (μ − θX)·Z  →  Z &gt; 0 rests only at X = μ/θ = {TARGET:g}\n&quot;
+            &quot;d ln(Z/Zref)/dt = μ − θX; Z = 0 is absorbing.&quot;,
+            ha=&quot;left&quot;, va=&quot;top&quot;, fontsize=9.5, color=INK)
+
+
+def make_figure():
+    runs = [simulate(seed) for seed in SEEDS]
+    deaths = [run[2] for run in runs]
+    died = np.sort([t for t in deaths if t is not None])
+    count, n = len(died), len(runs)
+    low, high = wilson(count, n)
+    before = int(np.sum(died &lt; SWITCH))
+    ode_t, ode_y = deterministic()
+    shown_dead = [s for s in range(SHOWN) if deaths[s] is not None]
+    print(f&quot;Z extinct by t={END:g}: {count}/{n} (95% CI {low:.2f}-{high:.2f}); &quot;
+          f&quot;{before} before the switch&quot;)
+    print(f&quot;ODE final Z={ode_y[0,-1]:.6f}, X={ode_y[1,-1]:.6f}&quot;)
+    print(f&quot;Shown seeds that went extinct: {shown_dead}&quot;)
+
+    plt.rcParams.update({&quot;font.family&quot;: &quot;sans-serif&quot;, &quot;font.sans-serif&quot;: [&quot;DejaVu Sans&quot;],
+                         &quot;font.size&quot;: 11,
+                         &quot;svg.fonttype&quot;: &quot;none&quot;, &quot;pdf.fonttype&quot;: 42,
+                         &quot;axes.spines.top&quot;: False, &quot;axes.spines.right&quot;: False})
+    fig, axes = plt.subplots(2, 2, figsize=(11, 8.6))
+    fig.subplots_adjust(left=.07, right=.98, bottom=.08, top=.9, wspace=.25, hspace=.5)
+    (a, b), (c, d) = axes
+    titles = [&quot;A   The circuit: logarithmic memory&quot;,
+              &quot;B   ODE: output returns to 20&quot;,
+              &quot;C   After Z vanishes, X decays&quot;,
+              f&quot;D   {count} of {n} runs lose Z by t = {END:g}&quot;]
+    for ax, title in zip(axes.flat, titles):
+        ax.set_title(title, loc=&quot;left&quot;, fontsize=12, pad=10, fontweight=&quot;bold&quot;)
+
+    draw_circuit(a)
+
+    # B: the deterministic story, both species on one axis
+    b.plot(ode_t, ode_y[0], color=COLORS[0], lw=2.4, label=&quot;Memory Z&quot;)
+    b.plot(ode_t, ode_y[1], color=COLORS[1], lw=2.4, label=&quot;Output X&quot;)
+    b.axhline(TARGET, color=&quot;#606870&quot;, lw=1.2, ls=&quot;:&quot;, label=f&quot;Target X = {TARGET:g}&quot;)
+    b.legend(frameon=False, fontsize=9.5, loc=&quot;center right&quot;)
+
+    # C: same model, counted; first four seeds with the ODE behind them
+    c.plot(ode_t, ode_y[1], color=INK, lw=2.6, alpha=.35, label=&quot;ODE X&quot;)
+    for seed, color in enumerate(COLORS):
+        t, y, death = runs[seed]
+        c.step(t, y[:, 1], where=&quot;post&quot;, lw=1.2, color=color, label=f&quot;Seed {seed} X&quot;)
+        if death is not None:
+            c.plot(death, y[np.searchsorted(t, death), 1], &quot;x&quot;, color=color, ms=9, mew=2.2)
+    c.axhline(TARGET, color=&quot;#606870&quot;, lw=1.2, ls=&quot;:&quot;, label=&quot;Target X = 20&quot;)
+    c.plot([], [], &quot;x&quot;, color=GREY, ms=9, mew=2.2, label=&quot;Z reaches 0&quot;)
+    c.legend(frameon=False, fontsize=8.5, ncol=2, loc=&quot;upper right&quot;)
+
+    # D: cumulative fraction of all 200 runs whose Z has reached 0
+    frac = np.arange(1, count+1) / n
+    d.step(np.r_[0, died, END], np.r_[0, frac, frac[-1] if count else 0],
+           where=&quot;post&quot;, color=INK, lw=2)
+    d.errorbar(END, count/n, yerr=[[count/n-low], [high-count/n]], fmt=&quot;o&quot;,
+               color=INK, capsize=4, ms=4)
+    d.text(END-1, low-.14, f&quot;{count/n:.0%} (95% CI {low:.0%}–{high:.0%})&quot;,
+           ha=&quot;right&quot;, va=&quot;top&quot;, fontsize=9.5)
+    d.set_ylim(0, max(high*1.15, .05))
+    d.set_ylabel(&quot;Fraction of runs with Z = 0&quot;)
+
+    for ax in (b, c, d):
+        ax.axvline(SWITCH, color=GREY, lw=1, ls=&quot;--&quot;)
+        ax.set(xlim=(0, END+0.5), xlabel=&quot;Time (a.u.)&quot;)
+        ax.yaxis.set_major_locator(MaxNLocator(integer=ax is not d, nbins=5))
+    b.set_ylabel(&quot;Molecules (ODE)&quot;)
+    c.set_ylabel(&quot;Output X (molecules)&quot;)
+    c.set_ylim(bottom=-1)
+    b.text(SWITCH+0.4, 14, &quot;γ 1 → 0.5&quot;, fontsize=9, color=GREY, va=&quot;top&quot;)
+
+    fig.suptitle(&quot;Autocatalytic memory: continuous recovery, discrete extinction&quot;, fontsize=13.5)
+
+    stats = {&quot;seeds&quot;: list(SEEDS), &quot;horizon&quot;: END, &quot;extinct&quot;: count,
+             &quot;extinct_fraction_ci95&quot;: [low, high], &quot;extinct_before_switch&quot;: before,
+             &quot;shown_seeds&quot;: list(range(SHOWN)), &quot;shown_seeds_extinct&quot;: shown_dead,
+             &quot;extinction_times&quot;: deaths, &quot;ode_final&quot;: ode_y[:, -1].tolist(),
+             &quot;parameters&quot;: {&quot;mu&quot;: MU, &quot;theta&quot;: THETA, &quot;k&quot;: K,
+                            &quot;gamma_before&quot;: GAMMA_BEFORE, &quot;gamma_after&quot;: GAMMA_AFTER,
+                            &quot;switch&quot;: SWITCH, &quot;initial_Z_X&quot;: INITIAL}}
+    return fig, stats
+
+
+def caption(stats):
+    &quot;&quot;&quot;Each sentence names the code or JSON key that backs it.&quot;&quot;&quot;
+    z_end, x_end = stats[&quot;ode_final&quot;]
+    low, high = stats[&quot;extinct_fraction_ci95&quot;]
+    p = stats[&quot;parameters&quot;]
+    return f&quot;&quot;&quot;**Figure 1.** Integral feedback in a count-based teaching model (not fitted to data).
+
+- **A.** Z grows at rate μZ and is removed at θXZ, so for Z &gt; 0, dZ/dt = (μ − θX)Z is zero only at
+  X = μ/θ = {p[&#x27;mu&#x27;]/p[&#x27;theta&#x27;]:g} [`parameters.mu`, `parameters.theta`]. All Z rates are
+  proportional to Z, so Z = 0 is absorbing [`simulate`: `rates`].
+- **B.** At t = {p[&#x27;switch&#x27;]:g}, γ drops from {p[&#x27;gamma_before&#x27;]:g} to {p[&#x27;gamma_after&#x27;]:g}. The ODE
+  ends at Z = {z_end:.2f}, X = {x_end:.2f} [`ode_final`]: X is restored to target by
+  lowering Z (steady state Z = γ·{p[&#x27;mu&#x27;]/p[&#x27;theta&#x27;]:g}/k).
+- **C.** Seeds 0–{len(stats[&#x27;shown_seeds&#x27;])-1} (unfiltered) simulated exactly with Gillespie&#x27;s
+  direct method; × marks Z reaching 0 in seeds {stats[&#x27;shown_seeds_extinct&#x27;]}
+  [`shown_seeds_extinct`].
+- **D.** Z reached 0 in {stats[&#x27;extinct&#x27;]}/{len(stats[&#x27;seeds&#x27;])} runs by t = {stats[&#x27;horizon&#x27;]:g}
+  (95% Wilson CI {low:.2f}–{high:.2f}) [`extinct`, `extinct_fraction_ci95`];
+  {stats[&#x27;extinct_before_switch&#x27;]} of these before the switch [`extinct_before_switch`].
+&quot;&quot;&quot;
+
+
+if __name__ == &quot;__main__&quot;:
+    import argparse
+    import sys
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;--audit-module-dir&quot;, help=&quot;Optional figure-QA toolkit directory&quot;)
+    args = parser.parse_args()
+    fig, stats = make_figure()
+    base = Path(__file__).resolve().parent / &quot;lecture10-autocatalytic-memory-figure&quot;
+    if args.audit_module_dir:
+        sys.path.insert(0, args.audit_module_dir)
+        from audit_panel_alignment import require_matplotlib_panel_alignment
+        qa = base.parent / &quot;lecture10-qa&quot;
+        qa.mkdir(exist_ok=True)
+        require_matplotlib_panel_alignment(fig, json_out=qa / &quot;alignment.json&quot;)
+    for extension in [&quot;.svg&quot;, &quot;.pdf&quot;, &quot;.png&quot;]:
+        fig.savefig(base.with_suffix(extension), dpi=300, facecolor=&quot;white&quot;)
+    base.with_suffix(&quot;.json&quot;).write_text(json.dumps(stats, indent=2)+&quot;\n&quot;)
+    base.with_name(base.name + &quot;-caption.md&quot;).write_text(caption(stats))
+</code></pre>
+
+    <h2 id="boundary">What I would argue against / where this breaks</h2>
+    <p>
+      Adding ∅ → Z at constant rate ε removes the absorbing boundary: at zero memory, the mean
+      waiting time for a new molecule is 1/ε. Yet it also changes the deterministic balance:
+    </p>
+    <div class="equation">
+      dZ/dt = ε + (μ − θX)Z<br> X* = μ/θ + ε/(θZ*).
+    </div>
+    <p>
+      For the post-change parameters above, ε = 0.1 gives X* ≈ 20.39, about 2% above the original
+      target, and a mean restart waiting time of 10 time units. This source makes restart possible;
+      it does not guarantee sustained regulation. The added flux allows memory to rest with nonzero
+      error, so exact adaptation to changes in γ is lost.
+    </p>
+    <div class="card">
+      <strong>Where this breaks.</strong> These are idealized, well-mixed reactions without division
+      or resource limits. The extinction fraction depends on rates, initial counts and observation
+      time. The equilibrium formula with ε is deterministic; it is not a formula for the stochastic
+      mean. Recovery and precision must be assessed separately.
+    </div>
+
+    <h2 id="sources">Sources</h2>
+    <ul class="src">
+      <li id="r1">
+        CCBS 2026. “Lecture 10: The adaptation biomachine.” <em>Core notes</em> (2026), §3b and
+        Appendix A2, “A multiplicative memory integrates in its logarithm, while it lasts.”
+        <a href="https://chemaoxfz.github.io/assets/ccbs/2026fall/lecture10-core.html#a2">Course
+        source</a>. Supports the logarithmic integral identity and the absorbing-boundary caveat.
+        The particular closed loop, numerical experiment and basal-source calculation above are my
+        extension.
+      </li>
+      <li id="r2">
+        Gillespie, D. T. “Exact stochastic simulation of coupled chemical reactions.” <em>The
+        Journal of Physical Chemistry</em> <strong>81</strong>, 2340–2361 (1977).
+        <a href="https://doi.org/10.1021/j100540a008">doi:10.1021/j100540a008</a>. Source of the
+        direct stochastic simulation method: exponential event waiting times and propensity-weighted
+        reaction selection.
+      </li>
+    </ul>
+  </div>
+</body>
+</html>
